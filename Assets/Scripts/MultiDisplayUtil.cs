@@ -1,6 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System;
+using UnityEngine;
+
+#if UNITY_EDITOR
+using System.Reflection;
+using UnityEditor;
+#endif
 
 public class MultiDisplayUtil
 {
@@ -120,6 +126,12 @@ public class MultiDisplayUtil
 
     public static int GetCurrentDisplay()
     {
+#if UNITY_EDITOR
+        if (!IsGameWindow(EditorWindow.focusedWindow))
+            return -1;
+
+        return GetGameViewDisplay(EditorWindow.focusedWindow);
+#else
         var displays = GetDisplays();
         POINT cursorPos;
         GetCursorPos(out cursorPos);
@@ -131,5 +143,40 @@ public class MultiDisplayUtil
         }
 
         return -1;
+#endif
     }
+
+#if UNITY_EDITOR
+
+    public static bool IsGameWindow(EditorWindow window)
+    {
+        if (window == null)
+            return false;
+
+        if (window.GetType() != GetGameWindowType())
+            return false;
+
+        return true;
+    }
+
+    public static UnityEngine.Rect GetGameViewPosition(EditorWindow window)
+    {
+        return window.position;
+    }
+
+    public static int GetGameViewDisplay(EditorWindow window)
+    {
+        Type viewType = GetGameWindowType();
+        FieldInfo fieldInf = viewType.GetField("m_TargetDisplay", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        return (int)fieldInf.GetValue(window);
+    }
+
+    private static Type GetGameWindowType()
+    {
+        Type gameViewType = Type.GetType("UnityEditor.GameView,UnityEditor");
+        return gameViewType;
+    }
+
+#endif
+
 }
